@@ -5,6 +5,7 @@ const (
 	Domain RuleType = iota
 	DomainSuffix
 	DomainKeyword
+	Ruleset
 	GEOIP
 	IPCIDR
 	SrcIPCIDR
@@ -23,6 +24,8 @@ func (rt RuleType) String() string {
 		return "DomainSuffix"
 	case DomainKeyword:
 		return "DomainKeyword"
+	case Ruleset:
+		return "Ruleset"
 	case GEOIP:
 		return "GeoIP"
 	case IPCIDR:
@@ -46,4 +49,10 @@ type Rule interface {
 	Adapter() string
 	Payload() string
 	NoResolveIP() bool
+}
+
+type RemoteRule interface {
+	Rule
+	Update()
+	LastUpdate() string
 }
