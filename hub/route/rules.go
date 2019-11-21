@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"net/http"
 
 	C "github.com/Dreamacro/clash/constant"
@@ -33,15 +34,49 @@ type RemoteRule struct {
 func updateRulesets(w http.ResponseWriter, r *http.Request) {
 	rawRules := tunnel.Rules()
 
+	success := make(chan C.RemoteRule)
+	ctx, cancel := context.WithTimeout(context.Background(), C.DownloadTimeout)
+	count := 0
+	defer cancel()
 	for _, rule := range rawRules {
 		if rule.RuleType() == C.Ruleset {
 			if r, ok := rule.(C.RemoteRule); ok {
-				go r.Update()
+				count++
+				go r.Update(ctx, success)
 			}
 		}
 	}
-
-	render.Status(r, 204)
+	rules := []R{}
+	if count == 0 {
+		render.JSON(w, r, render.M{
+			"rules": rules,
+		})
+		return
+	}
+	for {
+		select {
+		case rule := <-success:
+			rules = append(rules, RemoteRule{
+				Rule: Rule{
+					Type:    rule.RuleType().String(),
+					Payload: rule.Payload(),
+					Proxy:   rule.Adapter(),
+				},
+				LastUpdate: rule.LastUpdate(),
+			})
+			if count == len(rules) {
+				render.JSON(w, r, render.M{
+					"rules": rules,
+				})
+				return
+			}
+		case <-ctx.Done():
+			render.JSON(w, r, render.M{
+				"rules": rules,
+			})
+			return
+		}
+	}
 }
 
 func getRules(w http.ResponseWriter, r *http.Request) {

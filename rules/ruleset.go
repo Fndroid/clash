@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -51,12 +52,16 @@ func trimArr(arr []string) (r []string) {
 	return
 }
 
-func (r *Ruleset) Update() {
+func (r *Ruleset) Update(ctx context.Context, success chan C.RemoteRule) {
 	isNoResolve := true
 
 	rules := []C.Rule{}
 
-	resp, err := http.Get(r.url)
+	req, err := http.NewRequestWithContext(ctx, "GET", r.url, nil)
+	if err != nil {
+		return
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Errorln(err.Error())
 		return
@@ -146,6 +151,8 @@ func (r *Ruleset) Update() {
 	r.isNoResolve = isNoResolve
 	r.rules = rules
 	r.lastUpdate = time.Now()
+
+	success <- r
 }
 
 func (r *Ruleset) LastUpdate() string {
@@ -157,6 +164,6 @@ func NewRuleset(url string, adapter string) *Ruleset {
 		url:     url,
 		adapter: adapter,
 	}
-	go rs.Update()
+	go rs.Update(context.Background(), make(chan C.RemoteRule))
 	return &rs
 }

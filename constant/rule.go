@@ -1,5 +1,10 @@
 package constant
 
+import (
+	"context"
+	"time"
+)
+
 // Rule Type
 const (
 	Domain RuleType = iota
@@ -13,6 +18,8 @@ const (
 	DstPort
 	MATCH
 )
+
+const DownloadTimeout = 3 * time.Second
 
 type RuleType int
 
@@ -53,6 +60,6 @@ type Rule interface {
 
 type RemoteRule interface {
 	Rule
-	Update()
+	Update(context.Context, chan RemoteRule)
 	LastUpdate() string
 }
