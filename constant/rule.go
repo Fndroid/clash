@@ -20,6 +20,7 @@ const (
 )
 
 const DownloadTimeout = 3 * time.Second
+const UpdateInterval = 24 * time.Hour
 
 type RuleType int
 
@@ -62,4 +63,5 @@ type RemoteRule interface {
 	Rule
 	Update(context.Context, chan RemoteRule)
 	LastUpdate() string
+	Destroy()
 }

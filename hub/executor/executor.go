@@ -169,6 +169,15 @@ func updateProxies(proxies map[string]C.Proxy, providers map[string]provider.Pro
 }
 
 func updateRules(rules []C.Rule) {
+	oldRules := tunnel.Rules()
+
+	// close remote rules go routine
+	for _, rule := range oldRules {
+		if remoteRule, ok := rule.(C.RemoteRule); ok {
+			remoteRule.Destroy()
+		}
+	}
+
 	tunnel.UpdateRules(rules)
 }
 

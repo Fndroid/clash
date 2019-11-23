@@ -18,6 +18,7 @@ type Ruleset struct {
 	adapter     string
 	isNoResolve bool
 	lastUpdate  time.Time
+	done        chan struct{}
 }
 
 func (r *Ruleset) RuleType() C.RuleType {
@@ -43,6 +44,27 @@ func (r *Ruleset) Payload() string {
 
 func (r *Ruleset) NoResolveIP() bool {
 	return r.isNoResolve
+}
+
+func (r *Ruleset) Destroy() {
+	r.done <- struct{}{}
+}
+
+func (r *Ruleset) loop() {
+	tick := time.NewTicker(C.UpdateInterval)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go r.Update(ctx, make(chan C.RemoteRule))
+Loop:
+	for {
+		select {
+		case <-tick.C:
+			go r.Update(ctx, make(chan C.RemoteRule))
+		case <-r.done:
+			break Loop
+		}
+	}
 }
 
 func trimArr(arr []string) (r []string) {
@@ -163,7 +185,8 @@ func NewRuleset(url string, adapter string) *Ruleset {
 	rs := Ruleset{
 		url:     url,
 		adapter: adapter,
+		done:    make(chan struct{}),
 	}
-	go rs.Update(context.Background(), make(chan C.RemoteRule))
+	go rs.loop()
 	return &rs
 }
